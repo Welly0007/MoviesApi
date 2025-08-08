@@ -20,8 +20,8 @@ MovieApp is a RESTful Web API built with ASP.NET Core (.NET 8) for managing movi
 
 ### Setup
 
-1. **Clone the repository:**git clone <https://github.com/Welly0007/MoviesApi>
-cd MovieApp2. **Configure the database connection:**
+1. **Clone the repository:** git clone <https://github.com/Welly0007/MoviesApi>
+cd MovieApp2. ** Configure the database connection:**
    - Update the `DefaultConnection` string in `appsettings.json` to point to your SQL Server instance.
 
 3. **Apply database migrations:**dotnet ef database update4. **Run the application:**dotnet run5. **Access Swagger UI:**

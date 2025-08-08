@@ -3,14 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using MovieApp.Data;
 using MovieApp.Dtos;
 using MovieApp.Models;
+using MovieApp.Services;
 
 namespace MovieApp.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class MoviesController(ApplicationDbContext context) : Controller
+    public class MoviesController(IMoviesService moviesService) : Controller
     {
-        private readonly ApplicationDbContext _context = context;
+        private readonly IMoviesService _moviesService = moviesService;
 
         private List<string> _extensionAllowed = [".jpg", ".png"];
         private int _maxSize = 1048576;
@@ -19,7 +20,7 @@ namespace MovieApp.Controllers
         [HttpGet]
         public async Task<IActionResult> GetMoviesAsync()
         {
-            var movies = await _context.Movies.Select(g => new { g.Id, g.Rate, g.Title, g.GenreId, g.Genre }).OrderByDescending(g => g.Rate).ToListAsync();
+            var movies = await _moviesService.GetAllMoviesAsync();
             if (movies == null)
                 return NotFound("No Movies Found");
 
@@ -29,7 +30,7 @@ namespace MovieApp.Controllers
         [HttpGet("{id}")]
         public async Task<IActionResult> GetMovieByIdAsync(int id)
         {
-            var movie = await _context.Movies.SingleOrDefaultAsync(m => m.Id == id);
+            var movie = await _moviesService.GetMovieByIdAsync(id);
             //movie.Genre = await _context.Genres.FindAsync(movie.GenreId);
 
             if (movie == null)
@@ -46,7 +47,7 @@ namespace MovieApp.Controllers
             if (dto.Poster.Length > _maxSize)
                 return BadRequest("Max file Size is 1 MB");
 
-            var isValidGenre = await _context.Genres.AnyAsync(g => g.Id == dto.GenreId);
+            var isValidGenre = await _moviesService.isValidGenre(dto.GenreId);
 
             if (!isValidGenre)
                 return BadRequest("Genre Not found");
@@ -63,9 +64,7 @@ namespace MovieApp.Controllers
                 StoryLine = dto.StoryLine,
                 Poster = dataStream.ToArray(),
             };
-            await _context.AddAsync(movie);
-
-            await _context.SaveChangesAsync();
+            await _moviesService.AddMovieAsync(movie);
 
             return Ok(movie);
         }
@@ -80,14 +79,14 @@ namespace MovieApp.Controllers
             if (dto.Poster.Length > _maxSize)
                 return BadRequest("Max file Size is 1 MB");
 
-            var isValidGenre = await _context.Genres.AnyAsync(g => g.Id == dto.GenreId);
+            var isValidGenre = await _moviesService.isValidGenre(dto.GenreId);
 
             if (!isValidGenre)
                 return BadRequest("Genre Not found");
             using var dataStream = new MemoryStream();
             await dto.Poster.CopyToAsync(dataStream);
 
-            var movie = await _context.Movies.FindAsync(id);
+            var movie = await _moviesService.GetMovieByIdAsync(id);
 
             if (movie is null)
                 return NotFound($"Movie with id {id} not found");
@@ -98,18 +97,17 @@ namespace MovieApp.Controllers
             movie.StoryLine = dto.StoryLine;
             movie.Poster = dataStream.ToArray();
 
-            await _context.SaveChangesAsync();
+            _moviesService.UpdateMovie(movie);
 
             return Ok(movie);
         }
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteMovie(int id)
         {
-            var movie = await _context.Movies.FindAsync(id);
+            var movie = await _moviesService.GetMovieByIdAsync(id);
             if (movie is null)
                 return NotFound($"Movie with id {id} not found");
-            _context.Movies.Remove(movie);
-            await _context.SaveChangesAsync();
+            _moviesService.DeleteMovie(movie);
             return Ok(movie);
         }
     }
